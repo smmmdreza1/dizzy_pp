@@ -24,12 +24,39 @@ impl MyStr for str {
     }
 
     fn to_uint(&self) -> usize {
-        return self.parse::<usize>().unwrap_or_else(|err| panic!("Err: cannont convert the string slice to an uint becouse: {}", err));
+        return self.parse::<usize>().unwrap_or_else(|err| panic!("Err: cannont convert the string slice `{}` to an uint becouse: {}", self, err));
     }
 }
 
+fn split_single_whitespace(s: &str) -> Vec<String> {
+    let mut ret = Vec::new();
+    let mut current = String::new();
+
+    for (i, c) in s.chars().enumerate() {
+        if c == ' '  {
+            if s.chars().nth(i-1).unwrap() == ' ' {
+                current.push(c);
+                continue;
+            }
+
+            ret.push(current.clone());
+            current.clear();
+        } else {
+
+            current.push(c);
+        }
+    }
+
+    if !current.is_empty() {
+        ret.push(current);
+    }
+
+    return ret;
+}
+
 fn undizzy(data: &str) -> String {
-    let parts: Vec<_> = data.split_whitespace().collect();
+    let parts = split_single_whitespace(data);
+
     let mut sorted_hashmap = BTreeMap::new();
 
     for part in parts {
@@ -106,9 +133,25 @@ mod test {
     }
 
     #[test]
-    fn is_working() {
-        // let string = "77";
-        // println!("{}", string.head());
-        // println!("{}", string.to_uint());
+    fn test_split_single_whitespace() {
+        let file_content = read_file("src/split_sw.xyz").expect("Err: Cannont find or read `split.sw.xyz`!");
+
+        let got = split_single_whitespace(&file_content);
+
+        let want = vec![
+            String::from("s16"), String::from("n18"), String::from("i25"),
+            String::from("s10"), String::from("e32"), String::from("t8") ,
+            String::from("l20"), String::from("i13"), String::from("s28"),
+            String::from("t3") , String::from("a30"), String::from(" 15"),
+            String::from(" 4") , String::from("e27"), String::from("h24"),
+            String::from("p29"), String::from("e6") , String::from(" 9") ,
+            String::from("i17"), String::from("t5") , String::from("s2") ,
+            String::from("g19"), String::from("s7") , String::from("w23"),
+            String::from("l12"), String::from("r0") , String::from("p11"),
+            String::from("t14"), String::from(" 22"), String::from("t26"),
+            String::from("u1") , String::from("c31"), String::from("e21"),
+        ];
+
+        assert_eq!(got, want);
     }
 }
