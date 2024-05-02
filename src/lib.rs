@@ -55,30 +55,22 @@ fn split_single_whitespace(s: &str) -> Vec<String> {
 }
 
 fn undizzy(data: &str) -> String {
-    let parts = split_single_whitespace(data);
+    let sorted_hashmap: BTreeMap<usize, char> = split_single_whitespace(data)
+        .iter()
+        .map(|part| (part.tail().to_uint(), part.head()))
+        .collect();
 
-    let mut sorted_hashmap = BTreeMap::new();
-
-    for part in parts {
-        sorted_hashmap
-            .entry(part.tail().to_uint())
-            .or_insert(part.head());
-    }
-
-    let ret = String::from_iter(sorted_hashmap.values());
+    let ret = sorted_hashmap.values().cloned().collect::<String>();
     return ret;
 }
 
 fn dizzy(data: &str) -> String {
-    let mut unsorted_hashmap = HashMap::new();
+    let unsorted_hashmap: HashMap<String, char> = data.chars().enumerate()
+        .map(| (i, c) | (i.to_string(), c))
+        .collect();
 
-    for (i, c) in data.chars().enumerate() {
-        unsorted_hashmap.entry(i.to_string()).or_insert(c);
-    }
-
-    let my_vec: Vec<_> = unsorted_hashmap
-        .iter()
-        .map(|(k, v)| format!("{}{}", v, k))
+    let my_vec: Vec<String> = unsorted_hashmap.iter()
+        .map(| (k, v) | format!("{}{}", v, k))
         .collect();
 
     let ret = my_vec.join(" ");
