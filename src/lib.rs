@@ -1,3 +1,5 @@
+// Next: i have to add " " as argument
+
 use std::collections::{BTreeMap, HashMap};
 
 use std::fs;
@@ -81,33 +83,39 @@ fn read_file(path: &str) -> BoxResult<String> {
     return Ok(fs::read_to_string(path)?);
 }
 
+fn perform_command(command: &str, data: &str) {
+    match command {
+        "undizzy" => println!("Result: {}", undizzy(data)),
+        "dizzy"   => println!("Result: {}", dizzy(data)),
+        _         => eprintln!("Err: You have to type a command (dizzy/undizzy)!"),
+    }
+}
+
 pub fn run() {
     let args: Vec<String> = args().collect();
 
-    if args.len() >= 3 {
-        let command = args[1].as_str();
+    if args.len() <= 3 {
+        eprintln!("Err: NOT ENOUGH ARGUMENTS!");
+        return;
+    }
 
-        if args[2] == "-f" {
-            let file_name = &args[3];
+    let command = args[1].as_str();
 
-            let file_content = read_file(file_name).expect(&format!("Err: Cannont find or read {}!", file_name));
-
-            match command {
-                "undizzy" => println!("Result: {}", undizzy(&file_content)),
-                "dizzy"   => println!("Result: {}", dizzy(&file_content)),
-                _         => println!("You have to type a command (dizzy/undizzy)!"),
-            }
-        } else {
-            let data = &args[2..].join(" ");
-
-            match command {
-                "undizzy" => println!("Result: {}", undizzy(data)),
-                "dizzy"   => println!("Result: {}", dizzy(data)),
-                _         => println!("You have to type a command (dizzy/undizzy)!"),
+    match args.get(2) {
+        Some(flag) if flag == "-f" => {
+            if let Some(file_name) = args.get(3) {
+                if let Ok(file_content) = read_file(file_name) {
+                    perform_command(command, &file_content);
+                } else {
+                    eprintln!("Err: Cannont find or read {}!", file_name);
+                }
             }
         }
-    } else {
-        println!("NOT ENOUGH ARGUMENTS!");
+        _ => {
+            let data = &args[2..].join(" ");
+
+            perform_command(command, data);
+        }
     }
 }
 
