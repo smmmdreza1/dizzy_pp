@@ -1,5 +1,5 @@
-use practical_programming_dizzy as ppd;
+use practical_programming_dizzy::run ;
 
 fn main() {
-    ppd::run();
+    run();
 }
