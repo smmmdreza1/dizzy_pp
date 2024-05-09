@@ -1,6 +1,9 @@
+/// fix double quote bug when gets stdin
+
 use std::collections::{BTreeMap, HashMap};
 
-use std::fs;
+use std::io::Write;
+use std::{fs, io};
 use std::env::args;
 // use std::io::prelude::*;
 
@@ -86,16 +89,76 @@ fn read_file(path: &str) -> BoxResult<String> {
 
 fn perform_command(command: &str, data: &str) {
     match command {
-        "undizzy" => println!("Result: {}", undizzy(data)),
-        "dizzy"   => println!("Result: {}", dizzy(data)),
-        _         => eprintln!("Err: You have to type a command (dizzy/undizzy)!"),
+        "undizzy" => println!("Result: {}\n", undizzy(data)),
+        "dizzy"   => println!("Result: {}\n", dizzy(data)),
+        _         => eprintln!("Err: You have to type a command (dizzy/undizzy)!\n"),
     }
+}
+
+// this macro is actually useless for this program
+// but ill keep it for a while maybe.
+// (keep in mind i need to learn more about macros in rust)
+macro_rules! tuple_to_vec {
+    ($tuple:ident) => {
+        {
+            let mut vec = Vec::new();
+
+            $(
+                vec.push($tuple.$idx);
+            )*
+
+            vec
+        }
+    };
 }
 
 pub fn run() {
     let args: Vec<String> = args().collect();
 
-    if args.len() < 3 {
+    if args.len() == 1 {
+        let stdin = io::stdin();
+        let mut input = String::new();
+
+        println!();
+
+        loop {
+            print!("_> ");
+            let _ = io::stdout().flush();  // this line makes sure to
+                                           // output the above print is
+                                           // emitted immediately.
+
+            stdin.read_line(&mut input)
+                .expect("Err: Failed to read line!");
+
+
+            match input.as_str() {
+                "quit\r\n" => {
+                    println!("you quited the prgram succsecfullty!");
+                    return;
+                },
+                _ => {
+                    let (command, data) = input.split_once(" ").unwrap();
+
+                    let mut data = data.to_string();
+
+                    // this conditions will remove \r\n or \n at
+                    // the end of data. (trims newline)
+                    if data.ends_with('\n') {
+                        data.pop();
+
+                        if data.ends_with('\r') {
+                            data.pop();
+                        }
+                    }
+
+                    perform_command(command, &data);
+                },
+            }
+
+            input.clear();
+        }
+
+    } else if args.len() < 3 {
         eprintln!("Err: NOT ENOUGH ARGUMENTS!");
         return;
     }
