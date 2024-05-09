@@ -1,9 +1,9 @@
-/// fix double quote bug when gets stdin
+/// fix the tests
+/// add help command
 
 use std::collections::{BTreeMap, HashMap};
 
-use std::io::Write;
-use std::{fs, io};
+use std::{fs, io::{self, Write}};
 use std::env::args;
 // use std::io::prelude::*;
 
@@ -14,6 +14,23 @@ mod mod_tests;
 
 type BoxResult<T> = Result<T, Box<dyn Error>>;
 
+// this macro is actually useless for this program but ill keep it
+// maybe. (keep in mind i need to learn more about macros in rust)
+#[allow(unused_macros)]
+macro_rules! tuple_to_vec {
+    ($tuple:ident) => {
+        {
+            let mut vec = Vec::new();
+
+            $(
+                vec.push($tuple.$idx);
+            )*
+
+            vec
+        }
+    };
+}
+
 trait MyStr {
     fn head(&self) -> char;
     fn tail(&self) -> &Self;
@@ -22,7 +39,8 @@ trait MyStr {
 
 impl MyStr for str {
     fn head(&self) -> char {
-        return self.chars().next().expect("Err: cannot take the head of string slice beacouse the string slice is empty!");
+        return self.chars().next()
+            .expect("Err: cannot take the head of string slice beacouse the string slice is empty!");
     }
 
     fn tail(&self) -> &Self {
@@ -30,8 +48,15 @@ impl MyStr for str {
     }
 
     fn to_uint(&self) -> usize {
-        return self.parse::<usize>().unwrap_or_else(|err| panic!("Err: cannont convert the string slice `{}` to an uint becouse: {}", self, err));
+        return self.parse::<usize>()
+            .unwrap_or_else(|err|
+                            panic!("Err: cannont convert the string slice `{}` to an uint becouse: {}", self, err)
+            );
     }
+}
+
+fn read_file(path: &str) -> BoxResult<String> {
+    return Ok(fs::read_to_string(path)?);
 }
 
 fn split_single_whitespace(s: &str) -> Vec<String> {
@@ -60,6 +85,18 @@ fn split_single_whitespace(s: &str) -> Vec<String> {
     return ret;
 }
 
+fn trim_newlines(s: &mut String) -> &mut String {
+    if s.ends_with('\n') {
+        s.pop();
+
+        if s.ends_with('\r') {
+            s.pop();
+        }
+    }
+
+    return s;
+}
+
 fn undizzy(data: &str) -> String {
     let sorted_hashmap: BTreeMap<usize, char> = split_single_whitespace(data)
         .iter()
@@ -83,10 +120,6 @@ fn dizzy(data: &str) -> String {
     return ret;
 }
 
-fn read_file(path: &str) -> BoxResult<String> {
-    return Ok(fs::read_to_string(path)?);
-}
-
 fn perform_command(command: &str, data: &str) {
     match command {
         "undizzy" => println!("Result: {}\n", undizzy(data)),
@@ -95,74 +128,47 @@ fn perform_command(command: &str, data: &str) {
     }
 }
 
-// this macro is actually useless for this program
-// but ill keep it for a while maybe.
-// (keep in mind i need to learn more about macros in rust)
-macro_rules! tuple_to_vec {
-    ($tuple:ident) => {
-        {
-            let mut vec = Vec::new();
+fn user_input_run() {
+    let stdin = io::stdin();
+    let mut input = String::new();
 
-            $(
-                vec.push($tuple.$idx);
-            )*
+    println!();
 
-            vec
+    loop {
+        print!("_> ");
+        let _ = io::stdout().flush();  // this line makes sure to
+                                       // output the above print is
+                                       // emitted immediately.
+
+        stdin.read_line(&mut input)
+            .expect("Err: Failed to read line!");
+
+        match input.as_str() {
+            "\r\n" => println!(),
+            "quit\r\n" | "q\r\n" => {
+                println!("You quited the program succsecfullty!");
+                return;
+            },
+            _ => {
+                let (command, data) = input.split_once(" ").unwrap();
+
+                let mut data = data.to_string();
+                trim_newlines(&mut data);
+
+                if data.starts_with('\"') && data.ends_with( '\"') {
+                    data.remove(0);
+                    data.pop();
+                }
+
+                perform_command(command, &data);
+            },
         }
-    };
+
+        input.clear();
+    }
 }
 
-pub fn run() {
-    let args: Vec<String> = args().collect();
-
-    if args.len() == 1 {
-        let stdin = io::stdin();
-        let mut input = String::new();
-
-        println!();
-
-        loop {
-            print!("_> ");
-            let _ = io::stdout().flush();  // this line makes sure to
-                                           // output the above print is
-                                           // emitted immediately.
-
-            stdin.read_line(&mut input)
-                .expect("Err: Failed to read line!");
-
-
-            match input.as_str() {
-                "quit\r\n" => {
-                    println!("you quited the prgram succsecfullty!");
-                    return;
-                },
-                _ => {
-                    let (command, data) = input.split_once(" ").unwrap();
-
-                    let mut data = data.to_string();
-
-                    // this conditions will remove \r\n or \n at
-                    // the end of data. (trims newline)
-                    if data.ends_with('\n') {
-                        data.pop();
-
-                        if data.ends_with('\r') {
-                            data.pop();
-                        }
-                    }
-
-                    perform_command(command, &data);
-                },
-            }
-
-            input.clear();
-        }
-
-    } else if args.len() < 3 {
-        eprintln!("Err: NOT ENOUGH ARGUMENTS!");
-        return;
-    }
-
+fn cli_run(args: Vec<String>) {
     let command = args[1].as_str();
 
     match args.get(2) {
@@ -180,5 +186,18 @@ pub fn run() {
 
             perform_command(command, data);
         }
+    }
+}
+
+pub fn run() {
+    let args: Vec<String> = args().collect();
+
+    if args.len() == 1 {
+        user_input_run();
+    } else if args.len() < 3 {
+        eprintln!("Err: NOT ENOUGH ARGUMENTS!");
+        return;
+    } else {
+        cli_run(args);
     }
 }
