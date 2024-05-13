@@ -1,0 +1,17 @@
+
+*HELP*
+
+
+Commands:
+    undizzy
+    dizzy
+
+Flags (only for cli):
+    -f  => after this flag expected be a `file` path.  
+    
+USAGE:
+    First Usage:
+            [program_name] [command] [text]
+            
+    Second Usage (only for cli):
+            [program_name] [command] [flag] [file path]

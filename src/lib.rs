@@ -1,4 +1,4 @@
-/// add help command
+/// refactor the run function
 /// fix error handlings for user_input_run function (it hasnt to panic)
 
 use std::collections::{BTreeMap, HashMap};
@@ -145,7 +145,7 @@ fn perform_command(command: &str, data: &str) {
         "dizzy"   => {
             println!("Result: {}\n", dizzy(data));
         },
-        _ => println!("Err: command not found! Type (dizzy/undizzy)"),
+        _ => eprintln!("Err: command {} not found! (use `help` for more infos)", command),
     }
 }
 
@@ -233,6 +233,22 @@ pub fn run() {
 
     if args.len() == 1 {
         user_input_run();
+    } else if args.len() == 2 {
+        if let Some(command) = args.get(1) {
+            let help_msg = read_file("help.txt").unwrap();
+
+            match command.to_lowercase().as_str() {
+                "help" => println!("{help_msg}"),
+                "dizzy" => eprintln!("Err: expected a text to dizzy! (type `help` for more infos)"),
+                "undizzy" => eprintln!("Err: expected a text to undizzy! (type `help` for more infos)"),
+                _ => {
+                    eprintln!("Err: wtf is this `{}`, seems like you are retarded type `help` :\\n", command);
+
+                    println!("{help_msg}");
+
+                },
+            }
+        }
     } else if args.len() < 3 {
         eprintln!("Err: NOT ENOUGH ARGUMENTS!");
         return;
