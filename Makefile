@@ -2,12 +2,14 @@ TESTFLAGS = --nocapture
 UNDIZZY   = cargo run undizzy
 DIZZY     = cargo run dizzy
 
+ARGS =
+
 test:
-		cargo test -- ${TESTFLAGS}
+		cargo test -- ${TESTFLAGS} ${ARGS}
 
 testUndizzy:
-		 ${UNDIZZY} -f src/test.xyz & ${UNDIZZY} -f src/split_sw.xyz
+		 ${UNDIZZY} -f testfiles/undizzy_test1.dat & ${UNDIZZY} -f testfiles/undizzy_test2.dat
 
 testDizzy:
-		 ${DIZZY} "TFCCTF{th15_ch4ll3ng3_m4k3s_m3_d1zzy_;d}" & ${DIZZY} "rust test dizzy!"
+		 ${DIZZY} testfiles/dizzy_test1.dat & ${DIZZY} testfiles/dizzy_test2.dat
 

@@ -1,5 +1,5 @@
-/// fix the tests
 /// add help command
+/// fix error handlings for user_input_run function (it hasnt to panic)
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -7,12 +7,10 @@ use std::{fs, io::{self, Write}};
 use std::env::args;
 // use std::io::prelude::*;
 
-use std::error::Error;
-
 #[cfg(test)]
-mod mod_tests;
+pub mod mod_tests;
 
-type BoxResult<T> = Result<T, Box<dyn Error>>;
+type BoxResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 // this macro is actually useless for this program but ill keep it
 // maybe. (keep in mind i need to learn more about macros in rust)
@@ -30,6 +28,15 @@ macro_rules! tuple_to_vec {
         }
     };
 }
+
+// This commented cuz i think its useless for this project but we can use
+// this method too for this project.
+// #[derive(Debug)]
+// struct Cli {
+//     command: String,
+//     flag: Option<String>,
+//     path: Option<std::path::PathBuf>,
+// }
 
 trait MyStr {
     fn head(&self) -> char;
@@ -97,6 +104,16 @@ fn trim_newlines(s: &mut String) -> &mut String {
     return s;
 }
 
+fn remove_first_and_last_char(s: &mut String) -> &mut String {
+    s.pop();
+
+    if s.len() > 0 {
+        s.remove(0);
+    }
+
+    return s;
+}
+
 fn undizzy(data: &str) -> String {
     let sorted_hashmap: BTreeMap<usize, char> = split_single_whitespace(data)
         .iter()
@@ -122,9 +139,13 @@ fn dizzy(data: &str) -> String {
 
 fn perform_command(command: &str, data: &str) {
     match command {
-        "undizzy" => println!("Result: {}\n", undizzy(data)),
-        "dizzy"   => println!("Result: {}\n", dizzy(data)),
-        _         => eprintln!("Err: You have to type a command (dizzy/undizzy)!\n"),
+        "undizzy" => {
+            println!("Result: {}\n", undizzy(data));
+        },
+        "dizzy"   => {
+            println!("Result: {}\n", dizzy(data));
+        },
+        _ => println!("Err: command not found! Type (dizzy/undizzy)"),
     }
 }
 
@@ -156,8 +177,7 @@ fn user_input_run() {
                 trim_newlines(&mut data);
 
                 if data.starts_with('\"') && data.ends_with( '\"') {
-                    data.remove(0);
-                    data.pop();
+                    remove_first_and_last_char(&mut data);
                 }
 
                 perform_command(command, &data);
@@ -169,16 +189,27 @@ fn user_input_run() {
 }
 
 fn cli_run(args: Vec<String>) {
-    let command = args[1].as_str();
+    let command = args.get(1).expect("Err: You didnt pass the command!");
+
+    // let mut flag = Option::default();
+    // let mut path = Option::default();
 
     match args.get(2) {
-        Some(flag) if flag == "-f" => {
+        Some(f) if f == "-f" => {
+            // flag = Some(String::from("-f"));
+
             if let Some(file_name) = args.get(3) {
+                // path = Some(std::path::PathBuf::from(file_name));
+
                 if let Ok(file_content) = read_file(file_name) {
                     perform_command(command, &file_content);
                 } else {
                     eprintln!("Err: Cannont find or read {}!", file_name);
                 }
+            } else {
+                // path = None;
+
+                eprintln!("Err: Expected file path!");
             }
         }
         _ => {
@@ -187,8 +218,16 @@ fn cli_run(args: Vec<String>) {
             perform_command(command, data);
         }
     }
+
+    // let cli = Cli {
+    //     command: command.to_string(),
+    //     flag,
+    //     path,
+    // };
 }
 
+
+// reminder: its okay the cli_run function panics but user_input_run will never be paniced.
 pub fn run() {
     let args: Vec<String> = args().collect();
 
