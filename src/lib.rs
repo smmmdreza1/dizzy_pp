@@ -1,6 +1,3 @@
-/// refactor the run function
-/// fix error handlings for user_input_run function (it hasnt to panic)
-
 use std::collections::{BTreeMap, HashMap};
 
 use std::{fs, io::{self, Write}};
@@ -41,7 +38,7 @@ macro_rules! tuple_to_vec {
 trait MyStr {
     fn head(&self) -> char;
     fn tail(&self) -> &Self;
-    fn to_uint(&self) -> usize;
+    fn to_uint(&self) -> BoxResult<usize>;
 }
 
 impl MyStr for str {
@@ -54,11 +51,8 @@ impl MyStr for str {
         return &self[1..];
     }
 
-    fn to_uint(&self) -> usize {
-        return self.parse::<usize>()
-            .unwrap_or_else(|err|
-                            panic!("Err: cannont convert the string slice `{}` to an uint becouse: {}", self, err)
-            );
+    fn to_uint(&self) -> BoxResult<usize> {
+        return Ok(self.parse::<usize>()?);
     }
 }
 
@@ -72,7 +66,8 @@ fn split_single_whitespace(s: &str) -> Vec<String> {
 
     for (i, c) in s.chars().enumerate() {
         if c == ' '  {
-            if s.chars().nth(i-1).unwrap() == ' ' {
+            if ( i == 0 && c == ' ' ) ||
+               ( i >= 1 && s.chars().nth(i-1).unwrap() == ' ' ) {
                 current.push(c);
                 continue;
             }
@@ -80,7 +75,6 @@ fn split_single_whitespace(s: &str) -> Vec<String> {
             ret.push(current.clone());
             current.clear();
         } else {
-
             current.push(c);
         }
     }
@@ -114,14 +108,20 @@ fn remove_first_and_last_char(s: &mut String) -> &mut String {
     return s;
 }
 
-fn undizzy(data: &str) -> String {
-    let sorted_hashmap: BTreeMap<usize, char> = split_single_whitespace(data)
-        .iter()
-        .map(|part| (part.tail().to_uint(), part.head()))
-        .collect();
+fn flush_stdout() {
+    io::stdout().flush().expect("Failed to flush stdout");
+}
 
-    let ret = sorted_hashmap.values().cloned().collect::<String>();
-    return ret;
+fn undizzy(data: &str) -> BoxResult<String> {
+    let sorted_hashmap: BTreeMap<_, _> = split_single_whitespace(data)
+        .iter()
+        .map(|part| -> BoxResult<(_, _)>{
+            Ok( ( part.tail().to_uint()? , part.head() ) )
+        })
+        .collect::<BoxResult<_>>()?;
+
+    let ret: String = sorted_hashmap.values().cloned().collect();
+    return Ok(ret);
 }
 
 fn dizzy(data: &str) -> String {
@@ -138,14 +138,34 @@ fn dizzy(data: &str) -> String {
 }
 
 fn perform_command(command: &str, data: &str) {
-    match command {
+    match command.to_lowercase().as_str() {
         "undizzy" => {
-            println!("Result: {}\n", undizzy(data));
+            if data.trim().is_empty() {
+                eprintln!("Err: expected text after `{}` command! (use help or ? command for more infos :\\)\n", command);
+            } else {
+                match undizzy(data) {
+                    Ok(val) => println!("Result: {}\n", val),
+                    Err(_) => eprintln!("Err: cannot undizzy `{}` the undizzy form is like this: `t11 z4  7 i3 e9 u0 d2 s10 z5 t8 y6 n1`.\n", data),
+                }
+            }
         },
         "dizzy"   => {
-            println!("Result: {}\n", dizzy(data));
+            if data.trim().is_empty() {
+                eprintln!("Err: expected text after `{}` command! (use help or ? command for more infos :\\)\n", command);
+            } else {
+                println!("Result: {}\n", dizzy(data));
+            }
         },
-        _ => eprintln!("Err: command {} not found! (use `help` for more infos)", command),
+        "help" | "?" => {
+            if !data.trim().is_empty() {
+                eprintln!("Err: why the fuck did you type `{}` ? ...Nevermind here is the help dumbfuck:", data);
+            }
+
+            let help_msg = read_file("help.txt").unwrap();
+
+            println!("{help_msg}");
+        },
+        _ => eprintln!("Err: wtf is this `{}`, seems like you are retarded type `help` :\\\n", command),
     }
 }
 
@@ -156,31 +176,33 @@ fn user_input_run() {
     println!();
 
     loop {
-        print!("_> ");
-        let _ = io::stdout().flush();  // this line makes sure to
-                                       // output the above print is
-                                       // emitted immediately.
+        print!(">_ ");
+
+        flush_stdout();  // this line makes sure to output the above print
+                         // is emitted immediately.
 
         stdin.read_line(&mut input)
             .expect("Err: Failed to read line!");
 
-        match input.as_str() {
-            "\r\n" => println!(),
-            "quit\r\n" | "q\r\n" => {
+        match input.to_lowercase().trim() {
+            "" => println!(),
+            "quit" | "q" => {
                 println!("You quited the program succsecfullty!");
                 return;
             },
             _ => {
-                let (command, data) = input.split_once(" ").unwrap();
+                if let Some( (command, data) ) = input.split_once(" ") {
+                    let mut data = data.to_string();
+                    trim_newlines(&mut data);
 
-                let mut data = data.to_string();
-                trim_newlines(&mut data);
+                    if data.starts_with('\"') && data.ends_with( '\"') {
+                        remove_first_and_last_char(&mut data);
+                    }
 
-                if data.starts_with('\"') && data.ends_with( '\"') {
-                    remove_first_and_last_char(&mut data);
+                    perform_command(command, &data);
+                } else {
+                    perform_command(trim_newlines(&mut input), "");
                 }
-
-                perform_command(command, &data);
             },
         }
 
@@ -235,19 +257,7 @@ pub fn run() {
         user_input_run();
     } else if args.len() == 2 {
         if let Some(command) = args.get(1) {
-            let help_msg = read_file("help.txt").unwrap();
-
-            match command.to_lowercase().as_str() {
-                "help" => println!("{help_msg}"),
-                "dizzy" => eprintln!("Err: expected a text to dizzy! (type `help` for more infos)"),
-                "undizzy" => eprintln!("Err: expected a text to undizzy! (type `help` for more infos)"),
-                _ => {
-                    eprintln!("Err: wtf is this `{}`, seems like you are retarded type `help` :\\n", command);
-
-                    println!("{help_msg}");
-
-                },
-            }
+            perform_command(command, "");
         }
     } else if args.len() < 3 {
         eprintln!("Err: NOT ENOUGH ARGUMENTS!");

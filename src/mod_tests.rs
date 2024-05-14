@@ -19,7 +19,7 @@ fn test_undizzy() {
     ];
 
     for test in tests {
-        let got = undizzy(&read_file(test.infile).unwrap());
+        let got = undizzy(&read_file(test.infile).unwrap()).unwrap();
 
         assert_eq!(got, test.want);
     }
@@ -46,7 +46,7 @@ fn test_dizzy() {
     for test in tests {
         let got = dizzy(&read_file(test.infile).unwrap());
 
-        assert_eq!(undizzy(&got), undizzy(&test.want));
+        assert_eq!(undizzy(&got).unwrap(), undizzy(&test.want).unwrap());
     }
 }
 
