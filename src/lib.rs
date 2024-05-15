@@ -253,16 +253,17 @@ fn cli_run(args: Vec<String>) {
 pub fn run() {
     let args: Vec<String> = args().collect();
 
-    if args.len() == 1 {
-        user_input_run();
-    } else if args.len() == 2 {
-        if let Some(command) = args.get(1) {
-            perform_command(command, "");
+    match args.len() {
+        1 => user_input_run(),
+        2 => {
+            if let Some(command) = args.get(1) {
+                perform_command(command, "");
+            }
+        },
+        3..=usize::MAX => cli_run(args),
+        _ => {
+            eprintln!("Err: NOT ENOUGH ARGUMENTS!");
+            return;
         }
-    } else if args.len() < 3 {
-        eprintln!("Err: NOT ENOUGH ARGUMENTS!");
-        return;
-    } else {
-        cli_run(args);
     }
 }
